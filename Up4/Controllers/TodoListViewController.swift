@@ -8,11 +8,14 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
 class TodoListViewController: SwipeTableViewController {
 
     var todoItems: Results<Item>?
     let realm = try! Realm()
+    
+    @IBOutlet weak var searchBar: UISearchBar!
     
     var selectedCategory : Category? {
         didSet{
@@ -22,6 +25,41 @@ class TodoListViewController: SwipeTableViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        tableView.separatorStyle = .none
+        
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        
+        title = selectedCategory?.name
+        
+        guard let colourHex = selectedCategory?.colour else { fatalError() }
+        
+        updateNavBar(withHexCode: colourHex)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        
+        updateNavBar(withHexCode: "28AAC0")
+        
+    }
+    
+    //MARK: - Nav Bar Setup Methods
+    
+    func updateNavBar(withHexCode colourHexCode: String){
+        
+        guard let navBar = navigationController?.navigationBar else {fatalError("Navigation controller does not exist.")}
+        
+        guard let navBarColour = UIColor(hexString: colourHexCode) else { fatalError()}
+        
+        navBar.barTintColor = navBarColour
+        
+        navBar.tintColor = ContrastColorOf(navBarColour, returnFlat: true)
+        
+        navBar.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor : ContrastColorOf(navBarColour, returnFlat: true)]
+        
+        searchBar.barTintColor = navBarColour
         
     }
 
@@ -39,7 +77,10 @@ class TodoListViewController: SwipeTableViewController {
         if let item = todoItems?[indexPath.row] {
             
             cell.textLabel?.text = item.title
-                        
+            
+            guard let itemColour = UIColor(hexString: item.cellColour) else {fatalError()}           
+            cell.backgroundColor = itemColour
+            
             //Ternary operator ==>
             // value = condition ? valueIfTrue : valueIfFalse
             
@@ -79,6 +120,7 @@ class TodoListViewController: SwipeTableViewController {
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         
         var textField = UITextField()
+        var deadLineField = UITextField()
         
         let alert = UIAlertController(title: "Add New Item", message: "", preferredStyle: .alert)
         
@@ -88,8 +130,13 @@ class TodoListViewController: SwipeTableViewController {
                 do {
                     try self.realm.write {
                         let newItem = Item()
+                        let deadLineDays = Int(deadLineField.text!)!
                         newItem.title = textField.text!
                         newItem.dateItemCreated = Date()
+                        newItem.itemDeadLine = Calendar.current.date(byAdding: .day, value: deadLineDays, to: Date())
+                        
+                        let day = self.daysLeft(iDate: newItem.dateItemCreated!,fDate: newItem.itemDeadLine!)
+                        newItem.cellColour = self.cellColour(daysLeft: day,deadLineDays: deadLineDays)
                         currentCategory.items.append(newItem)
                     }
                 } catch {
@@ -106,17 +153,49 @@ class TodoListViewController: SwipeTableViewController {
             textField = alertTextField
         }
         
+        let maxDays = self.selectedCategory?.daysLeft
+        
+        alert.addTextField { (field2) in
+            deadLineField = field2
+            deadLineField.keyboardType = .numberPad
+            deadLineField.placeholder = "<= \(maxDays ?? 1) days"
+        }
+        
         alert.addAction(action)
         
         present(alert, animated: true, completion: nil)
         
     }
     
+    func daysLeft(iDate: Date, fDate: Date)->Int{
+        let gregorian = NSCalendar(calendarIdentifier:NSCalendar.Identifier.gregorian)
+        let components = gregorian?.components(NSCalendar.Unit.day, from: iDate, to: fDate, options: .matchFirst)
+        
+        guard let day = components?.day else { return 1 }
+        return day
+    }
+    
+    func cellColour(daysLeft: Int, deadLineDays: Int)-> String{
+        
+        var hexString: String = "FFFFFF"
+        
+        let percent: CGFloat = CGFloat(daysLeft)/CGFloat(deadLineDays)
+        
+        if percent <= 0.2 {
+            hexString = UIColor.flatRed.hexValue()
+        } else if percent <= 0.5 {
+            hexString = (UIColor.flatYellow.darken(byPercentage: 0.05)?.hexValue())!
+        } else {
+            hexString = (UIColor.flatMint.darken(byPercentage: 0.05)?.hexValue())!
+        }
+        return hexString
+    }
+    
         //MARK - Model Manupulation Methods
     
     func loadItems() {
         
-        todoItems = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
+        todoItems = selectedCategory?.items.sorted(byKeyPath: "dateItemCreated", ascending: true)
         
         tableView.reloadData()
         

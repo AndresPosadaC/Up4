@@ -8,6 +8,7 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
 class CategoryViewController: SwipeTableViewController {
 
@@ -19,6 +20,7 @@ class CategoryViewController: SwipeTableViewController {
         super.viewDidLoad()
         
         loadCategories()
+        tableView.separatorStyle = .none
       
     }
 
@@ -33,7 +35,16 @@ class CategoryViewController: SwipeTableViewController {
         
         let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
-        cell.textLabel?.text = categories?[indexPath.row].name ?? "No Categories Added Yet"
+        if let category = categories?[indexPath.row] {
+            
+            cell.textLabel?.text = category.name
+            
+            guard let categoryColour = UIColor(hexString: category.colour) else {fatalError()}
+            
+            cell.backgroundColor = categoryColour
+            cell.textLabel?.textColor = ContrastColorOf(categoryColour, returnFlat: true)
+            
+        }
         
         return cell
     }
@@ -97,16 +108,25 @@ class CategoryViewController: SwipeTableViewController {
     @IBAction func addButonPressed(_ sender: UIBarButtonItem) {
         
         var textField = UITextField()
+        var deadLineField = UITextField()
         
-        let alert = UIAlertController(title: "Add New Project", message: "", preferredStyle: .alert)
+//        var dateInterval: Double = 1.0
+        
+        let alert = UIAlertController(title: "New Project", message: "Please specify the number of days expected to complete the project", preferredStyle: .alert)
         
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
             
             let newCategory = Category()
-            newCategory.name = textField.text!
-            //newCategory.dateCreated = Date()
-            //newCategory.colour = UIColor.randomFlat.hexValue()
+            let deadLineDays = Int(deadLineField.text!)!
             
+            newCategory.name = textField.text!
+            newCategory.dateCreated = Date()
+            newCategory.deadLine = Calendar.current.date(byAdding: .day, value: deadLineDays, to: Date())
+
+            let day = daysLeft(iDate: newCategory.dateCreated!,fDate: newCategory.deadLine!)
+            newCategory.daysLeft = day
+            newCategory.colour = cellColour(daysLeft: day,deadLineDays: deadLineDays)
+
             self.save(category: newCategory)
             
         }
@@ -115,12 +135,43 @@ class CategoryViewController: SwipeTableViewController {
         
         alert.addTextField { (field) in
             textField = field
-            textField.placeholder = "Add a new project"
+            textField.keyboardType = .default
+            textField.placeholder = "New project's title"
+        }
+
+        alert.addTextField { (field2) in
+            deadLineField = field2
+            deadLineField.keyboardType = .numberPad
+            deadLineField.placeholder = "Number of days until dead line"
         }
         
         present(alert, animated: true, completion: nil)
     }
     
+}
+
+func daysLeft(iDate: Date, fDate: Date)->Int{
+    let gregorian = NSCalendar(calendarIdentifier:NSCalendar.Identifier.gregorian)
+    let components = gregorian?.components(NSCalendar.Unit.day, from: iDate, to: fDate, options: .matchFirst)
+    
+    guard let day = components?.day else { return 1 }
+    return day
+}
+
+func cellColour(daysLeft: Int, deadLineDays: Int)-> String{
+    
+    var hexString: String = "FFFFFF"
+    
+    let percent: CGFloat = CGFloat(daysLeft)/CGFloat(deadLineDays)
+    
+    if percent <= 0.2 {
+        hexString = UIColor.flatRed.hexValue()
+    } else if percent <= 0.5 {
+        hexString = (UIColor.flatYellow.darken(byPercentage: 0.05)?.hexValue())!
+    } else {
+        hexString = (UIColor.flatMint.darken(byPercentage: 0.05)?.hexValue())!
+    }
+    return hexString
 }
 
  //MARK: - Searchbar Methods
@@ -146,7 +197,4 @@ extension CategoryViewController: UISearchBarDelegate {
             
         }
     }
- 
-
-    
 }
