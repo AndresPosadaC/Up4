@@ -13,7 +13,7 @@ class Category: Object {
     @objc dynamic var name: String = ""
     @objc dynamic var dateCreated: Date?
     @objc dynamic var deadLine: Date?
-    @objc dynamic var daysLeft: Int = 0
-    @objc dynamic var colour: String = ""
+    @objc dynamic var daysLeft: Int = 0 // variable on time
+    @objc dynamic var colour: String = "" // variable on time depending on daysLeft
     let items = List<Item>()
 }

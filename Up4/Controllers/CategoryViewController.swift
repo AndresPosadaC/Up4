@@ -13,8 +13,10 @@ import ChameleonFramework
 class CategoryViewController: SwipeTableViewController {
 
     let realm = try! Realm()
-    
     var categories: Results<Category>?
+    
+    
+    @IBOutlet weak var SearchBarP: UISearchBar!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,7 +41,10 @@ class CategoryViewController: SwipeTableViewController {
             
             cell.textLabel?.text = category.name
             
-            guard let categoryColour = UIColor(hexString: category.colour) else {fatalError()}
+            //todays date until deadLine (predefined when creation)
+            let day = daysLeft(iDate: Date(),fDate: category.deadLine!)
+            
+            guard let categoryColour = UIColor(hexString: cellColour(daysLeft: day, deadLineDays: category.daysLeft)) else {fatalError()}
             
             cell.backgroundColor = categoryColour
             cell.textLabel?.textColor = ContrastColorOf(categoryColour, returnFlat: true)
@@ -112,17 +117,25 @@ class CategoryViewController: SwipeTableViewController {
         
 //        var dateInterval: Double = 1.0
         
-        let alert = UIAlertController(title: "New Project", message: "Please specify the number of days expected to complete the project", preferredStyle: .alert)
+        let alert = UIAlertController(title: "New Project", message: "Please specify the number of days expected to complete this project", preferredStyle: .alert)
         
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
             
             let newCategory = Category()
-            let deadLineDays = Int(deadLineField.text!)!
+            
+            // must be grater or equal to zero days
+            var deadLineDays = Int(deadLineField.text!)!
+            if deadLineDays <= 0 {
+                deadLineDays = 1
+            }
             
             newCategory.name = textField.text!
             newCategory.dateCreated = Date()
+            
+            // sets future date corresponding to the deadline date by adding the number of days to the date of creation
             newCategory.deadLine = Calendar.current.date(byAdding: .day, value: deadLineDays, to: Date())
-
+            
+            // sets the horizon day should be equal to deadLineDays when creation
             let day = daysLeft(iDate: newCategory.dateCreated!,fDate: newCategory.deadLine!)
             newCategory.daysLeft = day
             newCategory.colour = cellColour(daysLeft: day,deadLineDays: deadLineDays)
@@ -165,11 +178,13 @@ func cellColour(daysLeft: Int, deadLineDays: Int)-> String{
     let percent: CGFloat = CGFloat(daysLeft)/CGFloat(deadLineDays)
     
     if percent <= 0.2 {
-        hexString = UIColor.flatRed.hexValue()
-    } else if percent <= 0.5 {
-        hexString = (UIColor.flatYellow.darken(byPercentage: 0.05)?.hexValue())!
+        hexString = (UIColor.flatRed.lighten(byPercentage: 0.6)?.hexValue())!
+    } else if percent <= 0.4 {
+        hexString = (UIColor.flatYellow.lighten(byPercentage: 0.6)?.hexValue())!
+    } else if percent <= 0.7 {
+        hexString = (UIColor.flatMint.lighten(byPercentage: 0.7)?.hexValue())!
     } else {
-        hexString = (UIColor.flatMint.darken(byPercentage: 0.05)?.hexValue())!
+        hexString = (UIColor.flatWhite.hexValue())
     }
     return hexString
 }

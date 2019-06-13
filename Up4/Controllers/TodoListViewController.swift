@@ -77,14 +77,19 @@ class TodoListViewController: SwipeTableViewController {
         if let item = todoItems?[indexPath.row] {
             
             cell.textLabel?.text = item.title
-            
-            guard let itemColour = UIColor(hexString: item.cellColour) else {fatalError()}           
-            cell.backgroundColor = itemColour
+            let titulo = item.title
             
             //Ternary operator ==>
             // value = condition ? valueIfTrue : valueIfFalse
-            
             cell.accessoryType = item.done ? .checkmark : .none
+            
+            let day = daysLeft(iDate: Date(),fDate: item.itemDeadLine!)
+
+//            print("item \(titulo)")
+            
+            guard let itemColour = UIColor(hexString: cellColour(checkMark: item.done, daysLeft: day, deadLineDays: item.deadLineDays)) else {fatalError()}
+            cell.backgroundColor = itemColour
+            
         } else {
             cell.textLabel?.text = "No Items Added"
         }
@@ -130,13 +135,19 @@ class TodoListViewController: SwipeTableViewController {
                 do {
                     try self.realm.write {
                         let newItem = Item()
-                        let deadLineDays = Int(deadLineField.text!)!
+                        var deadLineDays = Int(deadLineField.text!)!
+                        if deadLineDays <= 0 {
+                            deadLineDays = 1
+                        }
                         newItem.title = textField.text!
+                        newItem.deadLineDays = deadLineDays
                         newItem.dateItemCreated = Date()
                         newItem.itemDeadLine = Calendar.current.date(byAdding: .day, value: deadLineDays, to: Date())
                         
                         let day = self.daysLeft(iDate: newItem.dateItemCreated!,fDate: newItem.itemDeadLine!)
-                        newItem.cellColour = self.cellColour(daysLeft: day,deadLineDays: deadLineDays)
+
+                        newItem.cellColour = self.cellColour(checkMark: newItem.done, daysLeft: day,deadLineDays: deadLineDays)
+                        
                         currentCategory.items.append(newItem)
                     }
                 } catch {
@@ -171,22 +182,28 @@ class TodoListViewController: SwipeTableViewController {
         let gregorian = NSCalendar(calendarIdentifier:NSCalendar.Identifier.gregorian)
         let components = gregorian?.components(NSCalendar.Unit.day, from: iDate, to: fDate, options: .matchFirst)
         
-        guard let day = components?.day else { return 1 }
+        guard let day = components?.day else { return 0 }
         return day
     }
     
-    func cellColour(daysLeft: Int, deadLineDays: Int)-> String{
+    func cellColour(checkMark: Bool, daysLeft: Int, deadLineDays: Int)-> String{
         
         var hexString: String = "FFFFFF"
         
         let percent: CGFloat = CGFloat(daysLeft)/CGFloat(deadLineDays)
         
-        if percent <= 0.2 {
-            hexString = UIColor.flatRed.hexValue()
-        } else if percent <= 0.5 {
-            hexString = (UIColor.flatYellow.darken(byPercentage: 0.05)?.hexValue())!
+//        print("daysLeft/deadLineDays: \(daysLeft) / \(deadLineDays) = percent \(percent)")
+        
+        if checkMark == true {
+            hexString = (UIColor.flatBlue.lighten(byPercentage: 0.8)?.hexValue())!
+        } else if percent <= 0.2 {
+            hexString = (UIColor.flatRed.lighten(byPercentage: 0.6)?.hexValue())!
+        } else if percent <= 0.4 {
+            hexString = (UIColor.flatYellow.lighten(byPercentage: 0.6)?.hexValue())!
+        } else if percent <= 0.7 {
+            hexString = (UIColor.flatMint.lighten(byPercentage: 0.7)?.hexValue())!
         } else {
-            hexString = (UIColor.flatMint.darken(byPercentage: 0.05)?.hexValue())!
+            hexString = (UIColor.flatWhite.hexValue())
         }
         return hexString
     }

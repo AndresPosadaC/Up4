@@ -11,9 +11,10 @@ import RealmSwift
 
 class Item: Object {
     @objc dynamic var title: String = ""
-    @objc dynamic var done: Bool = false
+    @objc dynamic var done: Bool = false // variable when user clicks
     @objc dynamic var dateItemCreated: Date?
+    @objc dynamic var deadLineDays: Int = 1 // variable on time
     @objc dynamic var itemDeadLine: Date?
-    @objc dynamic var cellColour: String = ""
+    @objc dynamic var cellColour: String = "" // variable on time depending on deadLineDays
     var parentCategory = LinkingObjects(fromType: Category.self, property: "items")
 }
